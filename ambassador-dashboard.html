@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Plug — Ambassador Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand: #7C3AED; --brand-dark: #5B21B6; --brand-light: #EDE9FE; --brand-xlight: #F5F3FF;
+      --accent: #F59E0B; --green: #10B981; --red: #EF4444; --blue: #3B82F6; --orange: #F97316;
+      --bg: #0F0D1A; --bg2: #1A1730; --surface: #1E1B2E; --surface2: #252240;
+      --border: #2D2A45; --border2: #3D3A58;
+      --text: #F0EEFF; --text2: #A8A3C8; --text3: #6B6894;
+      --sidebar-w: 240px; --topbar-h: 64px;
+    }
+    html, body { height: 100%; font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    button { font-family: 'Inter', sans-serif; cursor: pointer; }
+    input, textarea, select { font-family: 'Inter', sans-serif; }
+    a { text-decoration: none; color: inherit; }
+    #root { display: flex; height: 100%; }
+
+    /* AUTH */
+    .auth-screen { width: 100%; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at 60% 40%, #2D1B69 0%, #0F0D1A 70%); }
+    .auth-card { width: 100%; max-width: 420px; padding: 48px 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 32px 80px rgba(0,0,0,0.5); }
+    .auth-logo { font-size: 26px; font-weight: 800; color: var(--brand); margin-bottom: 4px; }
+    .auth-sub { font-size: 13px; color: var(--text3); margin-bottom: 36px; }
+    .auth-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+    .auth-input { width: 100%; padding: 12px 14px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: 10px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 16px; transition: border-color 0.2s; }
+    .auth-input:focus { border-color: var(--brand); }
+    .auth-btn { width: 100%; padding: 13px; background: var(--brand); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 4px; }
+    .auth-btn:hover { background: var(--brand-dark); }
+    .auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .auth-err { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #FCA5A5; font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+    .auth-info { background: rgba(124,58,237,0.1); border: 1px solid rgba(124,58,237,0.25); color: #C4B5FD; font-size: 13px; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+
+    /* SIDEBAR */
+    .sidebar { width: var(--sidebar-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; height: 100%; overflow-y: auto; }
+    .sidebar-logo { padding: 20px 20px 16px; border-bottom: 1px solid var(--border); }
+    .sidebar-logo-text { font-size: 17px; font-weight: 800; color: var(--brand); }
+    .sidebar-logo-sub { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+    .sidebar-section { padding: 12px 12px 4px; }
+    .sidebar-section-label { font-size: 10px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; font-size: 13.5px; font-weight: 500; color: var(--text2); cursor: pointer; transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: var(--brand-light); color: var(--brand); font-weight: 600; }
+    .sidebar-footer { margin-top: auto; padding: 16px; border-top: 1px solid var(--border); }
+    .sidebar-user { display: flex; align-items: center; gap: 10px; }
+    .sidebar-avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--brand); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+    .sidebar-user-name { font-size: 13px; font-weight: 600; }
+    .sidebar-user-role { font-size: 11px; color: var(--brand); }
+    .logout-btn { margin-left: auto; border: none; background: none; color: var(--text3); cursor: pointer; padding: 4px; border-radius: 6px; display: flex; align-items: center; }
+    .logout-btn:hover { color: var(--red); background: rgba(239,68,68,0.1); }
+
+    /* MAIN */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { height: var(--topbar-h); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 28px; background: var(--surface); flex-shrink: 0; gap: 16px; }
+    .topbar-title { font-size: 18px; font-weight: 700; }
+    .topbar-sub { font-size: 13px; color: var(--text3); }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .topbar-badge { padding: 5px 12px; background: rgba(124,58,237,0.15); color: var(--brand); border-radius: 20px; font-size: 12px; font-weight: 600; border: 1px solid rgba(124,58,237,0.3); }
+    .page { flex: 1; overflow-y: auto; padding: 28px; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; position: relative; overflow: hidden; }
+    .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+    .stat-card.purple::before { background: var(--brand); }
+    .stat-card.green::before { background: var(--green); }
+    .stat-card.amber::before { background: var(--accent); }
+    .stat-card.red::before { background: var(--red); }
+    .stat-card.blue::before { background: var(--blue); }
+    .stat-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 14px; }
+    .stat-icon.purple { background: rgba(124,58,237,0.15); }
+    .stat-icon.green { background: rgba(16,185,129,0.15); }
+    .stat-icon.amber { background: rgba(245,158,11,0.15); }
+    .stat-icon.red { background: rgba(239,68,68,0.15); }
+    .stat-icon.blue { background: rgba(59,130,246,0.15); }
+    .stat-num { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .stat-label { font-size: 12.5px; color: var(--text2); font-weight: 500; }
+
+    /* CARDS */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
+    .card-title { font-size: 15px; font-weight: 700; }
+    .card-count { font-size: 12px; color: var(--text3); background: var(--surface2); padding: 3px 10px; border-radius: 20px; }
+    .card-actions { margin-left: auto; display: flex; gap: 8px; }
+
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 11px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); background: var(--surface2); }
+    td { padding: 13px 16px; font-size: 13.5px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn-primary { background: var(--brand); color: white; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-ghost { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+    .btn-ghost:hover { background: var(--border); color: var(--text); }
+    .btn-danger { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+    .btn-warn { background: rgba(245,158,11,0.15); color: #FCD34D; border: 1px solid rgba(245,158,11,0.3); }
+    .btn-success { background: rgba(16,185,129,0.15); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .btn-success:hover { background: rgba(16,185,129,0.25); }
+    .btn-blue { background: rgba(59,130,246,0.15); color: #93C5FD; border: 1px solid rgba(59,130,246,0.3); }
+    .btn-sm { padding: 5px 10px; font-size: 12px; }
+    .btn-lg { padding: 11px 22px; font-size: 14px; }
+    .btn-full { width: 100%; justify-content: center; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* BADGES */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-verified { background: rgba(16,185,129,0.2); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-pending { background: rgba(245,158,11,0.2); color: #FCD34D; border: 1px solid rgba(245,158,11,0.3); }
+    .badge-rejected { background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-paid { background: rgba(16,185,129,0.2); color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .badge-flagged { background: rgba(239,68,68,0.2); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+    .badge-purple { background: rgba(124,58,237,0.15); color: #C4B5FD; border: 1px solid rgba(124,58,237,0.3); }
+
+    /* FORM */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 7px; }
+    .form-input, .form-textarea, .form-select { width: 100%; padding: 11px 14px; background: var(--bg2); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); font-size: 14px; outline: none; transition: border-color 0.2s; }
+    .form-input:focus, .form-textarea:focus, .form-select:focus { border-color: var(--brand); }
+    .form-textarea { resize: none; min-height: 80px; }
+    .form-select option { background: var(--surface); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-hint { font-size: 11px; color: var(--text3); margin-top: 5px; }
+
+    /* MODAL */
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 24px; backdrop-filter: blur(4px); }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 40px 100px rgba(0,0,0,0.6); animation: modalIn 0.2s ease; }
+    @keyframes modalIn { from { opacity:0; transform: scale(0.95) translateY(10px); } to { opacity:1; transform: none; } }
+    .modal-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-size: 17px; font-weight: 700; }
+    .modal-close { width: 32px; height: 32px; border-radius: 8px; border: none; background: var(--surface2); color: var(--text2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .modal-close:hover { background: var(--border); }
+    .modal-body { padding: 20px 24px 24px; }
+    .modal-footer { padding: 0 24px 24px; display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* TOAST */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+    .toast { padding: 12px 16px; border-radius: 10px; font-size: 13.5px; font-weight: 500; box-shadow: 0 8px 30px rgba(0,0,0,0.4); animation: toastIn 0.3s ease; max-width: 320px; }
+    @keyframes toastIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
+    .toast-success { background: #065F46; color: #6EE7B7; border: 1px solid rgba(16,185,129,0.3); }
+    .toast-error { background: #7F1D1D; color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+    .toast-info { background: var(--surface); color: var(--text2); border: 1px solid var(--border); }
+
+    /* LOADER */
+    .loader { display: flex; align-items: center; justify-content: center; padding: 48px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border2); border-top-color: var(--brand); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* MISC */
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .empty { text-align: center; padding: 60px 24px; color: var(--text3); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .filter-select { padding: 8px 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; cursor: pointer; }
+    .search-box { padding: 8px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; width: 220px; }
+    .search-box:focus { border-color: var(--brand); }
+    .search-box::placeholder { color: var(--text3); }
+
+    /* PROGRESS BAR */
+    .progress-wrap { background: var(--surface2); border-radius: 6px; height: 10px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--brand), var(--green)); transition: width 0.6s ease; }
+
+    /* REFERRAL CARD */
+    .ref-card { background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(59,130,246,0.15)); border: 1px solid rgba(124,58,237,0.35); border-radius: 14px; padding: 20px 24px; }
+    .ref-code { font-size: 22px; font-weight: 800; color: var(--brand); letter-spacing: 1px; font-family: monospace; }
+    .ref-link-box { display: flex; align-items: center; gap: 8px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-top: 10px; }
+    .ref-link-text { font-size: 13px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ANNOUNCEMENT */
+    .announcement-banner { background: linear-gradient(90deg, rgba(124,58,237,0.15), rgba(59,130,246,0.1)); border: 1px solid rgba(124,58,237,0.3); border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; display: flex; gap: 12px; align-items: flex-start; }
+
+    /* CHAT */
+    .chat-messages { height: 340px; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .chat-msg { max-width: 80%; }
+    .chat-msg.mine { align-self: flex-end; }
+    .chat-msg.theirs { align-self: flex-start; }
+    .chat-bubble { padding: 10px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; }
+    .chat-msg.mine .chat-bubble { background: var(--brand); color: white; border-bottom-right-radius: 4px; }
+    .chat-msg.theirs .chat-bubble { background: var(--surface2); color: var(--text); border-bottom-left-radius: 4px; }
+    .chat-time { font-size: 10px; color: var(--text3); margin-top: 3px; text-align: right; }
+    .chat-input-row { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); }
+    .chat-input { flex: 1; padding: 10px 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 13px; outline: none; }
+    .chat-input:focus { border-color: var(--brand); }
+
+    /* EQUITY */
+    .equity-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+    .equity-bar-item { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .equity-bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 4px; overflow: hidden; }
+    .equity-bar-fill { height: 100%; border-radius: 4px; background: var(--brand); }
+
+    /* TABS */
+    .page-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; width: fit-content; }
+    .page-tab { padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; border: none; background: none; transition: all 0.15s; }
+    .page-tab.active { background: var(--brand); color: white; }
+
+    /* MOBILE */
+    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .two-col { grid-template-columns: 1fr; }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+<div id="root"></div>
+<div id="modal-root"></div>
+
+<script>
+// ========================================================
+// CONFIG
+// ========================================================
+const SUPABASE_URL = 'https://zgzamthhfykhjaldosvb.supabase.co'
+const SUPABASE_ANON_KEY = 'sb_publishable_T2qRKGsS33YJPN3BochPTA_r2v_gSlS'
+
+const { createClient } = supabase
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+// ========================================================
+// UTILS
+// ========================================================
+function toast(msg, type = 'info') {
+  const el = document.createElement('div')
+  el.className = `toast toast-${type}`
+  el.textContent = msg
+  document.getElementById('toast-container').appendChild(el)
+  setTimeout(() => el.remove(), 3500)
+}
+function fmtDate(ts) {
+  if (!ts) return '—'
+  return new Date(ts).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+function timeAgo(ts) {
+  const s = Math.floor((Date.now() - new Date(ts)) / 1000)
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s/60)}m ago`
+  if (s < 86400) return `${Math.floor(s/3600)}h ago`
+  return `${Math.floor(s/86400)}d ago`
+}
+function initials(name) {
+  return (name || '?').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+}
+function numFmt(n) {
+  if (n >= 1000) return (n/1000).toFixed(1) + 'k'
+  return String(n || 0)
+}
+function naira(n) { return '₦' + Number(n||0).toLocaleString() }
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success')).catch(() => toast('Copy failed', 'error'))
+}
+function closeModal() {
+  const el = document.getElementById('modal-root')
+  if (el) el.innerHTML = ''
+}
+
+// ========================================================
+// STATE
+// ========================================================
+let state = {
+  user: null, ambassador: null,
+  page: 'overview',
+  referrals: [], payouts: [],
+  messages: [], announcements: [],
+  refFilter: 'all', refSearch: '',
+  chatPoll: null,
+}
+
+// ========================================================
+// AUTH
+// ========================================================
+async function checkAuth() {
+  const { data: { session } } = await db.auth.getSession()
+  if (!session) { renderAuth(); return }
+  state.user = session.user
+  await loadAmbassador()
+}
+
+async function loadAmbassador() {
+  const { data, error } = await db.from('ambassadors')
+    .select('*')
+    .eq('user_id', state.user.id)
+    .single()
+  
+  if (error || !data) {
+    renderPendingAccess()
+    return
+  }
+
+  if (data.status === 'pending') { renderPendingAccess(); return }
+  if (data.status === 'rejected') { renderRejected(data); return }
+  if (data.status !== 'approved') { renderPendingAccess(); return }
+
+  state.ambassador = data
+
+  // First login: force profile completion
+  if (!data.profile_complete) {
+    renderOnboarding()
+    return
+  }
+
+  renderApp()
+  loadDashboardData()
+}
+
+async function login(email, password) {
+  const { data, error } = await db.auth.signInWithPassword({ email, password })
+  if (error) return error.message
+  state.user = data.user
+  await loadAmbassador()
+  return null
+}
+
+async function logout() {
+  if (state.chatPoll) clearInterval(state.chatPoll)
+  await db.auth.signOut()
+  state.user = null; state.ambassador = null
+  renderAuth()
+}
+
+// ========================================================
+// AUTH SCREENS
+// ========================================================
+function renderAuth() {
+  document.getElementById('root').innerHTML = `
+  <div class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">⚡ Campus Plug</div>
+      <div class="auth-sub">Ambassador Portal — Invite-Only Access</div>
+      <div id="auth-err"></div>
+      <div class="auth-info">🔐 Access is granted by Campus Plug admin only. No self-signup.</div>
+      <label class="auth-label">Email Address</label>
+      <input class="auth-input" type="email" id="auth-email" placeholder="your@email.com" autocomplete="username">
+      <label class="auth-label">Password</label>
+      <input class="auth-input" type="password" id="auth-pass" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="auth-btn" id="auth-btn" onclick="doLogin()">Sign In to Ambassador Portal</button>
+    </div>
+  </div>`
+}
+
+function renderPendingAccess() {
+  document.getElementById('root').innerHTML = `
+  <div class="auth-screen">
+    <div class="auth-card" style="text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">⏳</div>
+      <div class="auth-logo">Access Pending</div>
+      <div style="color:var(--text3);margin:12px 0 24px;font-size:14px;line-height:1.6">
+        Your ambassador account is awaiting admin approval.<br>You'll receive access once Campus Plug gives you the green light.
+      </div>
+      <button class="auth-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>`
+}
+
+function renderRejected(data) {
+  document.getElementById('root').innerHTML = `
+  <div class="auth-screen">
+    <div class="auth-card" style="text-align:center">
+      <div style="font-size:48px;margin-bottom:16px">🚫</div>
+      <div class="auth-logo">Access Denied</div>
+      <div style="color:var(--text3);margin:12px 0 24px;font-size:14px">Your ambassador application was not approved. Contact Campus Plug for more info.</div>
+      <button class="auth-btn" onclick="logout()">Sign Out</button>
+    </div>
+  </div>`
+}
+
+async function doLogin() {
+  const email = document.getElementById('auth-email').value.trim()
+  const pass = document.getElementById('auth-pass').value
+  const btn = document.getElementById('auth-btn')
+  const errEl = document.getElementById('auth-err')
+  errEl.innerHTML = ''
+  btn.disabled = true; btn.textContent = 'Signing in...'
+  const err = await login(email, pass)
+  if (err) {
+    errEl.innerHTML = `<div class="auth-err">${err}</div>`
+    btn.disabled = false; btn.textContent = 'Sign In to Ambassador Portal'
+  }
+}
+
+// ========================================================
+// ONBOARDING (First Login)
+// ========================================================
+function renderOnboarding() {
+  document.getElementById('root').innerHTML = `
+  <div class="auth-screen">
+    <div class="auth-card" style="max-width:500px">
+      <div class="auth-logo">🎉 Welcome, Ambassador!</div>
+      <div class="auth-sub" style="margin-bottom:24px">Complete your profile to activate your referral code and start earning.</div>
+      <div id="onboard-err"></div>
+      <div class="form-row">
+        <div>
+          <label class="auth-label">Phone Number</label>
+          <input class="auth-input" id="ob-phone" placeholder="+2348012345678" style="margin-bottom:0">
+        </div>
+        <div>
+          <label class="auth-label">WhatsApp Number</label>
+          <input class="auth-input" id="ob-whatsapp" placeholder="+2348012345678" style="margin-bottom:0">
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <label class="auth-label">School / Institution</label>
+        <input class="auth-input" id="ob-school" placeholder="e.g. Bauchi Institute of Technology">
+      </div>
+      <div class="form-row">
+        <div>
+          <label class="auth-label">Department</label>
+          <input class="auth-input" id="ob-dept" placeholder="e.g. Computer Science" style="margin-bottom:0">
+        </div>
+        <div>
+          <label class="auth-label">Level</label>
+          <select class="auth-input" id="ob-level" style="margin-bottom:0">
+            <option value="">Select level</option>
+            <option>100</option><option>200</option><option>300</option><option>400</option><option>500</option><option>HND 1</option><option>HND 2</option>
+          </select>
+        </div>
+      </div>
+      <button class="auth-btn" style="margin-top:24px" id="ob-btn" onclick="submitOnboarding()">Activate My Ambassador Account →</button>
+    </div>
+  </div>`
+}
+
+async function submitOnboarding() {
+  const phone = document.getElementById('ob-phone').value.trim()
+  const whatsapp = document.getElementById('ob-whatsapp').value.trim()
+  const school = document.getElementById('ob-school').value.trim()
+  const dept = document.getElementById('ob-dept').value.trim()
+  const level = document.getElementById('ob-level').value
+  const errEl = document.getElementById('onboard-err')
+  errEl.innerHTML = ''
+
+  if (!phone || !whatsapp || !school || !dept || !level) {
+    errEl.innerHTML = `<div class="auth-err">Please fill in all fields.</div>`; return
+  }
+
+  const btn = document.getElementById('ob-btn')
+  btn.disabled = true; btn.textContent = 'Saving...'
+
+  // Generate referral code: CP-[SCHOOL_SLUG]-[SEQ]
+  const slug = school.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10)
+  // Get count of ambassadors at this school to generate sequence
+  const { count } = await db.from('ambassadors').select('*', { count: 'exact', head: true }).ilike('school', school)
+  const seq = String((count || 0) + 1).padStart(3, '0')
+  const referral_code = `CP-${slug}-${seq}`
+  const referral_link = `campusplug.com/ref/${referral_code}`
+
+  const { error } = await db.from('ambassadors').update({
+    phone, whatsapp, school, department: dept, level,
+    referral_code, referral_link,
+    profile_complete: true,
+    updated_at: new Date().toISOString()
+  }).eq('user_id', state.user.id)
+
+  if (error) {
+    errEl.innerHTML = `<div class="auth-err">${error.message}</div>`
+    btn.disabled = false; btn.textContent = 'Activate My Ambassador Account →'
+    return
+  }
+
+  toast('🎉 Profile complete! Welcome aboard.', 'success')
+  await loadAmbassador()
+}
+
+// ========================================================
+// DATA LOADING
+// ========================================================
+async function loadDashboardData() {
+  await Promise.all([loadReferrals(), loadPayouts(), loadAnnouncements()])
+}
+
+async function loadReferrals() {
+  const { data } = await db.from('ambassador_referrals')
+    .select('*')
+    .eq('ambassador_id', state.ambassador.id)
+    .order('created_at', { ascending: false })
+  state.referrals = data || []
+  if (state.page === 'overview') renderOverview()
+  if (state.page === 'referrals') renderReferrals()
+}
+
+async function loadPayouts() {
+  const { data } = await db.from('ambassador_payouts')
+    .select('*')
+    .eq('ambassador_id', state.ambassador.id)
+    .order('created_at', { ascending: false })
+  state.payouts = data || []
+}
+
+async function loadAnnouncements() {
+  const { data } = await db.from('ambassador_announcements')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(3)
+  state.announcements = data || []
+}
+
+async function loadMessages() {
+  const { data } = await db.from('ambassador_messages')
+    .select('*')
+    .eq('ambassador_id', state.ambassador.id)
+    .order('created_at', { ascending: true })
+    .limit(50)
+  state.messages = data || []
+  renderChatMessages()
+}
+
+// ========================================================
+// COMPUTED STATS
+// ========================================================
+function computeStats() {
+  const refs = state.referrals
+  const total = refs.length
+  const verified = refs.filter(r => r.status === 'verified').length
+  const pending = refs.filter(r => r.status === 'pending').length
+
+  // Option A: ₦3k per 5 verified students
+  const earningsA = Math.floor(verified / 5) * 3000
+  // Monthly (this month)
+  const now = new Date()
+  const thisMonthVerified = refs.filter(r => {
+    const d = new Date(r.verified_at || r.created_at)
+    return r.status === 'verified' && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).length
+  const monthEarnings = Math.floor(thisMonthVerified / 5) * 3000
+
+  const pendingEarnings = refs.filter(r => r.status === 'pending').length * 600 // estimated
+
+  return { total, verified, pending, earningsA, monthEarnings, pendingEarnings }
+}
+
+// ========================================================
+// APP SHELL
+// ========================================================
+function renderApp() {
+  const a = state.ambassador
+  const name = a.full_name || a.email?.split('@')[0] || 'Ambassador'
+  document.getElementById('root').innerHTML = `
+  <div class="sidebar">
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-text">⚡ Campus Plug</div>
+      <div class="sidebar-logo-sub">Ambassador Portal</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Dashboard</div>
+      <button class="nav-item ${state.page==='overview'?'active':''}" id="nav-overview" onclick="navigateTo('overview')">📊 Overview</button>
+      <button class="nav-item ${state.page==='referrals'?'active':''}" id="nav-referrals" onclick="navigateTo('referrals')">👥 My Referrals</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Earnings</div>
+      <button class="nav-item ${state.page==='earnings'?'active':''}" id="nav-earnings" onclick="navigateTo('earnings')">💰 Earnings & Payouts</button>
+      <button class="nav-item ${state.page==='equity'?'active':''}" id="nav-equity" onclick="navigateTo('equity')">📈 Equity Tracker</button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Resources</div>
+      <button class="nav-item ${state.page==='materials'?'active':''}" id="nav-materials" onclick="navigateTo('materials')">🎨 Marketing Materials</button>
+      <button class="nav-item ${state.page==='support'?'active':''}" id="nav-support" onclick="navigateTo('support')">💬 Support & Chat</button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-avatar">${initials(name)}</div>
+        <div>
+          <div class="sidebar-user-name">${name}</div>
+          <div class="sidebar-user-role">🏅 Ambassador</div>
+        </div>
+        <button class="logout-btn" onclick="logout()" title="Sign out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="main" id="main">
+    <div class="topbar" id="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Overview</div>
+        <div class="topbar-sub" id="topbar-sub">Welcome back, ${name}</div>
+      </div>
+      <div class="topbar-right">
+        <span class="topbar-badge">🏅 ${a.school || 'Ambassador'}</span>
+        <span class="topbar-badge" style="cursor:pointer" onclick="copyText('${a.referral_link||''}')" title="Copy referral link">📎 ${a.referral_code || 'Loading...'}</span>
+      </div>
+    </div>
+    <div class="page" id="page-content">
+      <div class="loader"><div class="spinner"></div></div>
+    </div>
+  </div>`
+  navigateTo('overview')
+}
+
+function navigateTo(page) {
+  state.page = page
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'))
+  const nav = document.getElementById(`nav-${page}`)
+  if (nav) nav.classList.add('active')
+
+  const titles = {
+    overview: ['Overview', 'Your ambassador performance'],
+    referrals: ['My Referrals', 'Track students you\'ve referred'],
+    earnings: ['Earnings & Payouts', 'Your commissions and payout history'],
+    equity: ['Equity Tracker', 'Your stake in the 5% equity pool'],
+    materials: ['Marketing Materials', 'Flyers, merch and downloads'],
+    support: ['Support & Chat', 'Talk to the Campus Plug team'],
+  }
+  const [title, sub] = titles[page] || [page, '']
+  document.getElementById('topbar-title').textContent = title
+  document.getElementById('topbar-sub').textContent = sub
+
+  const pc = document.getElementById('page-content')
+  pc.innerHTML = '<div class="loader"><div class="spinner"></div></div>'
+
+  if (page === 'overview') renderOverview()
+  else if (page === 'referrals') renderReferrals()
+  else if (page === 'earnings') renderEarnings()
+  else if (page === 'equity') renderEquity()
+  else if (page === 'materials') renderMaterials()
+  else if (page === 'support') { renderSupport(); loadMessages() }
+}
+
+// ========================================================
+// OVERVIEW
+// ========================================================
+function renderOverview() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+  const s = computeStats()
+  const a = state.ambassador
+
+  // Announcements
+  const annHTML = state.announcements.map(ann => `
+    <div class="announcement-banner">
+      <span style="font-size:20px">📣</span>
+      <div>
+        <div style="font-weight:700;font-size:14px;margin-bottom:3px">${ann.title}</div>
+        <div style="font-size:13px;color:var(--text2)">${ann.body}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">${timeAgo(ann.created_at)}</div>
+      </div>
+    </div>`).join('')
+
+  // Month progress (Option B: 30 students = ₦50k)
+  const now = new Date()
+  const thisMonthRefs = state.referrals.filter(r => {
+    const d = new Date(r.created_at)
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  }).length
+  const monthPct = Math.min(100, Math.round(thisMonthRefs / 30 * 100))
+
+  pc.innerHTML = `
+    ${annHTML}
+
+    <div class="stats-grid">
+      <div class="stat-card purple"><div class="stat-icon purple">👥</div><div class="stat-num">${s.total}</div><div class="stat-label">Total Referred</div></div>
+      <div class="stat-card green"><div class="stat-icon green">✅</div><div class="stat-num">${s.verified}</div><div class="stat-label">Verified Students</div></div>
+      <div class="stat-card amber"><div class="stat-icon amber">⏳</div><div class="stat-num">${s.pending}</div><div class="stat-label">Pending Verification</div></div>
+      <div class="stat-card blue"><div class="stat-icon blue">💰</div><div class="stat-num">${naira(s.earningsA)}</div><div class="stat-label">Total Earnings</div></div>
+      <div class="stat-card green"><div class="stat-icon green">📅</div><div class="stat-num">${naira(s.monthEarnings)}</div><div class="stat-label">This Month</div></div>
+    </div>
+
+    <div class="two-col" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">📈 Monthly Target (Option B)</span></div>
+        <div style="padding:20px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:14px;font-weight:600">${thisMonthRefs} / 30 students this month</span>
+            <span style="font-size:13px;color:var(--brand);font-weight:700">${monthPct}%</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-fill" style="width:${monthPct}%"></div></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:10px">Refer 30 verified students this month to earn <strong style="color:var(--green)">₦50,000</strong></div>
+        </div>
+      </div>
+
+      <div class="ref-card">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Your Referral Code</div>
+        <div class="ref-code">${a.referral_code || '—'}</div>
+        <div class="ref-link-box">
+          <span class="ref-link-text">${a.referral_link || 'campusplug.com/ref/...'}</span>
+          <button class="btn btn-primary btn-sm" onclick="copyText('${a.referral_link||''}')">📋 Copy</button>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="shareWhatsApp()">📲 Share on WhatsApp</button>
+          <button class="btn btn-ghost btn-sm" onclick="copyText('${a.referral_link||''}')">🔗 Copy Link</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Recent Referrals</span>
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" onclick="navigateTo('referrals')">View All →</button>
+        </div>
+      </div>
+      ${renderReferralTableHTML(state.referrals.slice(0, 5))}
+    </div>`
+}
+
+// ========================================================
+// REFERRALS
+// ========================================================
+function renderReferrals() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+
+  let filtered = state.referrals
+  if (state.refFilter !== 'all') filtered = filtered.filter(r => r.status === state.refFilter)
+  if (state.refSearch) {
+    const q = state.refSearch.toLowerCase()
+    filtered = filtered.filter(r => (r.student_name||'').toLowerCase().includes(q) || (r.student_email||'').toLowerCase().includes(q))
+  }
+
+  pc.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input class="search-box" placeholder="Search name or email…" value="${state.refSearch}"
+          oninput="state.refSearch=this.value;renderReferrals()">
+        <select class="filter-select" onchange="state.refFilter=this.value;renderReferrals()">
+          <option value="all" ${state.refFilter==='all'?'selected':''}>All Statuses</option>
+          <option value="pending" ${state.refFilter==='pending'?'selected':''}>Pending</option>
+          <option value="verified" ${state.refFilter==='verified'?'selected':''}>Verified</option>
+          <option value="rejected" ${state.refFilter==='rejected'?'selected':''}>Rejected</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">⬇ Export CSV</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Referred Students</span>
+        <span class="card-count">${filtered.length} shown · ${state.referrals.length} total</span>
+      </div>
+      ${renderReferralTableHTML(filtered, true)}
+    </div>`
+}
+
+function renderReferralTableHTML(refs, showActions = false) {
+  if (!refs.length) return '<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">No referrals yet</div><div style="font-size:13px;color:var(--text3)">Share your referral link to get started</div></div>'
+  return `<div style="overflow-x:auto"><table>
+    <thead><tr>
+      <th>Student</th><th>School</th><th>Date Referred</th><th>Status</th><th>Earnings</th>
+      ${showActions ? '<th>Actions</th>' : ''}
+    </tr></thead>
+    <tbody>
+      ${refs.map(r => {
+        const statusBadge = r.status === 'verified'
+          ? '<span class="badge badge-verified">✅ Verified</span>'
+          : r.status === 'rejected'
+          ? '<span class="badge badge-rejected">✗ Rejected</span>'
+          : r.is_flagged
+          ? '<span class="badge badge-flagged">🚩 Flagged</span>'
+          : '<span class="badge badge-pending">⏳ Pending</span>'
+        const earnings = r.status === 'verified' ? naira(600) : `<span style="color:var(--text3)">${naira(0)} (pending)</span>`
+        return `<tr>
+          <td>
+            <div style="font-weight:600;font-size:13px">${r.student_name || 'Unknown'}</div>
+            <div style="font-size:11px;color:var(--text3)">${r.student_email || ''}</div>
+          </td>
+          <td style="font-size:13px;color:var(--text2)">${r.student_school || '—'}</td>
+          <td style="font-size:12px;color:var(--text3)">${fmtDate(r.created_at)}</td>
+          <td>${statusBadge}</td>
+          <td style="font-weight:600;font-size:13px">${earnings}</td>
+          ${showActions ? `<td>
+            ${r.status === 'pending' ? `<button class="btn btn-blue btn-sm" onclick="uploadProof('${r.id}')">📎 Upload ID</button>` : ''}
+          </td>` : ''}
+        </tr>`
+      }).join('')}
+    </tbody>
+  </table></div>`
+}
+
+function exportCSV() {
+  const rows = [['Name','Email','School','Date','Status','Earnings']]
+  state.referrals.forEach(r => {
+    rows.push([r.student_name||'', r.student_email||'', r.student_school||'', fmtDate(r.created_at), r.status, r.status==='verified'?'600':'0'])
+  })
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+  const blob = new Blob([csv], { type: 'text/csv' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a'); a.href = url; a.download = `referrals-${state.ambassador.referral_code}.csv`; a.click()
+  toast('CSV downloaded', 'success')
+}
+
+function uploadProof(referralId) {
+  const el = document.getElementById('modal-root')
+  el.innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header"><span class="modal-title">📎 Upload Verification Proof</span><button class="modal-close" onclick="closeModal()">✕</button></div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">Upload the student's school ID or any valid proof of enrollment for manual verification.</div>
+        <div class="form-group">
+          <label class="form-label">Proof Type</label>
+          <select class="form-select" id="proof-type">
+            <option>School ID Card</option>
+            <option>Student Portal Screenshot</option>
+            <option>Matric Number Letter</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="proof-note" placeholder="Any notes for the admin…"></textarea>
+        </div>
+        <div style="background:var(--bg2);border:1px dashed var(--border2);border-radius:8px;padding:24px;text-align:center;cursor:pointer;margin-top:8px" onclick="document.getElementById('proof-file').click()">
+          <div style="font-size:32px;margin-bottom:8px">📁</div>
+          <div style="font-size:13px;font-weight:600">Click to select file</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">PNG, JPG, PDF — max 5MB</div>
+        </div>
+        <input type="file" id="proof-file" accept="image/*,.pdf" style="display:none" onchange="document.getElementById('proof-filename').textContent=this.files[0]?.name||''">
+        <div id="proof-filename" style="font-size:12px;color:var(--brand);margin-top:8px;text-align:center"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitProof('${referralId}')">Submit for Review</button>
+      </div>
+    </div>
+  </div>`
+}
+
+async function submitProof(referralId) {
+  const note = document.getElementById('proof-note').value
+  const proofType = document.getElementById('proof-type').value
+  const { error } = await db.from('ambassador_referrals').update({
+    proof_submitted: true, proof_type: proofType, proof_note: note, updated_at: new Date().toISOString()
+  }).eq('id', referralId)
+  if (error) { toast('Submit failed: ' + error.message, 'error'); return }
+  toast('Proof submitted for review', 'success')
+  closeModal()
+  loadReferrals()
+}
+
+// ========================================================
+// EARNINGS
+// ========================================================
+function renderEarnings() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+  const s = computeStats()
+  const verifiedEarnings = Math.floor(s.verified / 5) * 3000
+  const pendingPayable = s.pending * 600
+  const totalPaid = state.payouts.filter(p => p.status === 'paid').reduce((a, b) => a + (b.amount || 0), 0)
+
+  pc.innerHTML = `
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+      <div class="stat-card green"><div class="stat-icon green">✅</div><div class="stat-num">${naira(verifiedEarnings)}</div><div class="stat-label">Verified Earnings</div></div>
+      <div class="stat-card amber"><div class="stat-icon amber">⏳</div><div class="stat-num">${naira(pendingPayable)}</div><div class="stat-label">Pending Earnings</div></div>
+      <div class="stat-card blue"><div class="stat-icon blue">🏦</div><div class="stat-num">${naira(totalPaid)}</div><div class="stat-label">Total Paid Out</div></div>
+      <div class="stat-card purple"><div class="stat-icon purple">💰</div><div class="stat-num">${naira(verifiedEarnings - totalPaid)}</div><div class="stat-label">Available Balance</div></div>
+    </div>
+
+    <div class="two-col" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><span class="card-title">💡 Earning Structure</span></div>
+        <div style="padding:20px">
+          <div style="margin-bottom:16px;padding:14px;background:var(--bg2);border-radius:10px;border-left:3px solid var(--brand)">
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px">Option A — Per Batch</div>
+            <div style="font-size:13px;color:var(--text2)">₦3,000 for every 5 verified students you refer.</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">You have ${s.verified} verified → ${naira(Math.floor(s.verified/5)*3000)}</div>
+          </div>
+          <div style="padding:14px;background:var(--bg2);border-radius:10px;border-left:3px solid var(--green)">
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px">Option B — Monthly Tier</div>
+            <div style="font-size:13px;color:var(--text2)">Earn ₦50,000 when you refer 30+ verified students in a calendar month.</div>
+            <div style="font-size:12px;color:var(--red);margin-top:4px">⚠️ Only verified students count for payouts</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title">💳 Request Payout</span></div>
+        <div style="padding:20px">
+          <div style="margin-bottom:16px">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Available for withdrawal</div>
+            <div style="font-size:28px;font-weight:800;color:var(--green)">${naira(verifiedEarnings - totalPaid)}</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bank Name</label>
+            <input class="form-input" id="pay-bank" placeholder="e.g. GTBank" value="${state.ambassador.bank_name||''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Account Number</label>
+            <input class="form-input" id="pay-acct" placeholder="0123456789" value="${state.ambassador.account_number||''}">
+          </div>
+          ${(verifiedEarnings - totalPaid) < 5000 
+            ? `<div style="font-size:12px;color:var(--accent);padding:10px 14px;background:rgba(245,158,11,0.1);border-radius:8px;margin-bottom:12px">⚠️ Minimum payout is ₦5,000. Earn more first!</div>`
+            : ''}
+          <button class="btn btn-primary btn-full" onclick="requestPayout(${verifiedEarnings - totalPaid})" ${(verifiedEarnings - totalPaid) < 5000 ? 'disabled' : ''}>
+            Request Payout
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Payout History</span><span class="card-count">${state.payouts.length}</span></div>
+      ${!state.payouts.length
+        ? '<div class="empty"><div class="empty-icon">💳</div><div class="empty-title">No payouts yet</div></div>'
+        : `<div style="overflow-x:auto"><table>
+            <thead><tr><th>Amount</th><th>Bank</th><th>Date</th><th>Status</th><th>Ref</th></tr></thead>
+            <tbody>
+              ${state.payouts.map(p => `<tr>
+                <td style="font-weight:700;color:var(--green)">${naira(p.amount)}</td>
+                <td style="font-size:13px;color:var(--text2)">${p.bank_name||'—'} · ${p.account_number||'—'}</td>
+                <td style="font-size:12px;color:var(--text3)">${fmtDate(p.created_at)}</td>
+                <td><span class="badge ${p.status==='paid'?'badge-paid':p.status==='rejected'?'badge-rejected':'badge-pending'}">${p.status}</span></td>
+                <td style="font-size:11px;color:var(--text3);font-family:monospace">${p.id?.slice(0,8)||'—'}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>`}
+    </div>`
+}
+
+async function requestPayout(available) {
+  if (available < 5000) { toast('Minimum payout is ₦5,000', 'error'); return }
+  const bank = document.getElementById('pay-bank')?.value.trim()
+  const acct = document.getElementById('pay-acct')?.value.trim()
+  if (!bank || !acct) { toast('Enter bank details first', 'error'); return }
+
+  // Save bank details
+  await db.from('ambassadors').update({ bank_name: bank, account_number: acct }).eq('id', state.ambassador.id)
+
+  const { error } = await db.from('ambassador_payouts').insert({
+    ambassador_id: state.ambassador.id,
+    amount: available,
+    bank_name: bank,
+    account_number: acct,
+    status: 'pending',
+    created_at: new Date().toISOString()
+  })
+  if (error) { toast('Request failed: ' + error.message, 'error'); return }
+  toast('✅ Payout request submitted! Admin will review within 48hrs.', 'success')
+  loadPayouts()
+}
+
+// ========================================================
+// EQUITY TRACKER
+// ========================================================
+async function renderEquity() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+  pc.innerHTML = '<div class="loader"><div class="spinner"></div></div>'
+
+  // Load all ambassadors to compute pool share
+  const { data: allAmbs } = await db.from('ambassadors').select('id, full_name, school, referral_code').eq('status', 'approved')
+  const { data: allRefs } = await db.from('ambassador_referrals').select('ambassador_id, status')
+
+  const verifiedByAmb = {}
+  if (allRefs) allRefs.filter(r => r.status === 'verified').forEach(r => {
+    verifiedByAmb[r.ambassador_id] = (verifiedByAmb[r.ambassador_id] || 0) + 1
+  })
+  const totalPool = Object.values(verifiedByAmb).reduce((a,b) => a+b, 0)
+  const myVerified = verifiedByAmb[state.ambassador.id] || 0
+  const myShare = totalPool > 0 ? (myVerified / totalPool * 5).toFixed(3) : '0.000'
+
+  // Cliff / vest
+  const startDate = new Date(state.ambassador.created_at)
+  const now = new Date()
+  const monthsActive = Math.floor((now - startDate) / (30 * 86400 * 1000))
+  const cliffMonths = 6
+  const vestMonths = 24
+  const cliffLeft = Math.max(0, cliffMonths - monthsActive)
+  const vestPct = Math.min(100, Math.max(0, Math.round((monthsActive - cliffMonths) / vestMonths * 100)))
+
+  const topAmbs = (allAmbs || [])
+    .map(a => ({ ...a, verified: verifiedByAmb[a.id] || 0, pct: totalPool > 0 ? (verifiedByAmb[a.id]||0) / totalPool * 5 : 0 }))
+    .sort((a, b) => b.verified - a.verified)
+    .slice(0, 5)
+
+  pc.innerHTML = `
+    <div class="two-col" style="margin-bottom:20px">
+      <div class="equity-card">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:6px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Your Equity Stake</div>
+        <div style="font-size:42px;font-weight:800;color:var(--brand)">${myShare}%</div>
+        <div style="font-size:13px;color:var(--text2);margin-top:4px">of the 5% ambassador equity pool</div>
+        <div style="margin-top:16px;padding:14px;background:var(--bg2);border-radius:10px;font-size:13px;color:var(--text2)">
+          Based on: <strong style="color:var(--text)">${myVerified} verified students</strong> out of ${totalPool} pool total
+        </div>
+      </div>
+
+      <div class="equity-card">
+        <div style="font-size:13px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:16px">Vesting Schedule</div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:600">6-Month Cliff</span>
+            <span style="font-size:13px;color:${cliffLeft===0?'var(--green)':'var(--accent)'};">${cliffLeft===0?'✅ Cliff Passed':`${cliffLeft} months left`}</span>
+          </div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:13px;font-weight:600">24-Month Vest</span>
+            <span style="font-size:13px;color:var(--brand)">${vestPct}% vested</span>
+          </div>
+          <div class="progress-wrap"><div class="progress-fill" style="width:${vestPct}%"></div></div>
+          <div style="font-size:12px;color:var(--text3);margin-top:8px">
+            ${cliffLeft > 0 ? `Your equity vesting starts after ${cliffLeft} more month${cliffLeft===1?'':'s'}.` : `You've vested ${vestPct}% of your equity stake.`}
+          </div>
+        </div>
+        <div style="margin-top:16px;font-size:12px;color:var(--text3);padding:10px;background:var(--bg2);border-radius:8px;line-height:1.6">
+          📅 Started: ${fmtDate(state.ambassador.created_at)}<br>
+          🏁 Full vest by: ${fmtDate(new Date(startDate.getTime() + (6+24)*30*86400*1000).toISOString())}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">🏆 Top Ambassadors — Pool Breakdown</span></div>
+      <div style="padding:20px">
+        ${topAmbs.map((a, i) => `
+          <div class="equity-bar-item">
+            <div style="width:20px;font-size:12px;color:var(--text3);font-weight:700">${i+1}</div>
+            <div style="min-width:140px;font-size:13px;font-weight:600;${a.id===state.ambassador.id?'color:var(--brand)':''}">${a.full_name||a.referral_code} ${a.id===state.ambassador.id?'(You)':''}</div>
+            <div class="equity-bar-track"><div class="equity-bar-fill" style="width:${Math.min(100,a.pct*20)}%"></div></div>
+            <div style="min-width:60px;font-size:12px;font-weight:700;color:var(--brand);text-align:right">${a.pct.toFixed(3)}%</div>
+          </div>`).join('')}
+      </div>
+    </div>`
+}
+
+// ========================================================
+// MARKETING MATERIALS
+// ========================================================
+async function renderMaterials() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+  pc.innerHTML = '<div class="loader"><div class="spinner"></div></div>'
+
+  const { data: materials } = await db.from('ambassador_materials')
+    .select('*')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+
+  const { data: merch } = await db.from('ambassador_merch')
+    .select('*')
+    .eq('ambassador_id', state.ambassador.id)
+
+  const items = materials || []
+  const merchandize = merch || []
+
+  pc.innerHTML = `
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-header"><span class="card-title">📥 Downloads — Flyers & Posters</span></div>
+      <div style="padding:20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px">
+        ${!items.length ? '<div style="color:var(--text3);font-size:14px">No materials uploaded yet. Check back soon!</div>' :
+          items.map(m => `
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+              <div style="height:120px;background:linear-gradient(135deg,rgba(124,58,237,0.3),rgba(59,130,246,0.2));display:flex;align-items:center;justify-content:center;font-size:48px">
+                ${m.type==='flyer'?'🖼':'🖼️'}
+              </div>
+              <div style="padding:14px">
+                <div style="font-weight:700;font-size:14px;margin-bottom:4px">${m.title}</div>
+                <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${m.description||''}</div>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                  <a href="${m.file_url||'#'}" target="_blank" class="btn btn-primary btn-sm">⬇ Download</a>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2);cursor:pointer">
+                    <input type="checkbox" ${m.printed?'checked':''} onchange="markPrinted('${m.id}',this.checked)" style="accent-color:var(--brand)">
+                    Printed
+                  </label>
+                </div>
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">📦 Merchandise Delivery</span></div>
+      ${!merchandize.length
+        ? '<div class="empty"><div class="empty-icon">📦</div><div class="empty-title">No merch dispatched yet</div><div style="font-size:13px;color:var(--text3)">Campus Plug will update this when your items ship</div></div>'
+        : `<div style="overflow-x:auto"><table>
+            <thead><tr><th>Item</th><th>Tracking No.</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${merchandize.map(m => `<tr>
+                <td style="font-weight:600">${m.item_name}</td>
+                <td style="font-family:monospace;font-size:12px;color:var(--brand)">${m.tracking_number||'Pending'}</td>
+                <td><span class="badge ${m.received?'badge-verified':'badge-pending'}">${m.received?'✅ Received':'📦 In Transit'}</span></td>
+                <td>
+                  ${!m.received ? `<button class="btn btn-success btn-sm" onclick="markMerchReceived('${m.id}')">Mark Received</button>` : '<span style="color:var(--text3);font-size:12px">Done</span>'}
+                </td>
+              </tr>`).join('')}
+            </tbody>
+          </table></div>`}
+    </div>`
+}
+
+async function markPrinted(materialId, printed) {
+  await db.from('ambassador_materials').update({ printed }).eq('id', materialId)
+  toast(printed ? 'Marked as printed' : 'Unmarked', 'info')
+}
+
+async function markMerchReceived(merchId) {
+  const { error } = await db.from('ambassador_merch').update({ received: true, received_at: new Date().toISOString() }).eq('id', merchId)
+  if (error) { toast('Update failed', 'error'); return }
+  toast('✅ Item marked as received', 'success')
+  renderMaterials()
+}
+
+// ========================================================
+// SUPPORT & CHAT
+// ========================================================
+function renderSupport() {
+  const pc = document.getElementById('page-content')
+  if (!pc) return
+  pc.innerHTML = `
+    <div class="two-col">
+      <div class="card" style="display:flex;flex-direction:column;height:500px">
+        <div class="card-header"><span class="card-title">💬 Chat with Admin</span><span class="badge badge-verified" style="margin-left:auto">● Online</span></div>
+        <div class="chat-messages" id="chat-messages">
+          <div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">Loading messages…</div>
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMessage()">
+          <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <div class="card-header"><span class="card-title">❓ FAQ</span></div>
+          <div style="padding:0">
+            ${[
+              ['How does verification work?', 'Students must sign up via your referral link, then verify their identity using a .edu.ng email or by uploading a valid school ID. Pending students don\'t count for payouts until verified.'],
+              ['When are payouts processed?', 'Payout requests are reviewed within 48 hours on weekdays. Minimum payout is ₦5,000. Only earnings from verified students are eligible.'],
+              ['What if a student uses the wrong link?', 'Contact admin via chat. If we can confirm the referral, we can manually attribute it to your account.'],
+              ['How is equity calculated?', 'You share in 5% of Campus Plug equity. Your share is proportional to your verified referrals vs all ambassadors\'s total verified referrals.'],
+              ['Can I refer students from other schools?', 'Yes! You can refer students from any school, but payouts require .edu.ng email or verified school ID regardless of institution.'],
+            ].map(([q,a]) => `
+              <div style="padding:14px 20px;border-bottom:1px solid var(--border)">
+                <div style="font-weight:600;font-size:13.5px;margin-bottom:6px">${q}</div>
+                <div style="font-size:13px;color:var(--text2);line-height:1.6">${a}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`
+
+  // Poll for new messages every 10s
+  if (state.chatPoll) clearInterval(state.chatPoll)
+  state.chatPoll = setInterval(loadMessages, 10000)
+}
+
+function renderChatMessages() {
+  const el = document.getElementById('chat-messages')
+  if (!el) return
+  if (!state.messages.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text3);font-size:13px;padding:20px">No messages yet. Say hello! 👋</div>'
+    return
+  }
+  el.innerHTML = state.messages.map(m => {
+    const isMine = m.sender === 'ambassador'
+    return `<div class="chat-msg ${isMine?'mine':'theirs'}">
+      <div class="chat-bubble">${m.body}</div>
+      <div class="chat-time">${timeAgo(m.created_at)} ${isMine?'· You':'· Admin'}</div>
+    </div>`
+  }).join('')
+  el.scrollTop = el.scrollHeight
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chat-input')
+  const body = input?.value.trim()
+  if (!body) return
+  input.value = ''
+
+  const { error } = await db.from('ambassador_messages').insert({
+    ambassador_id: state.ambassador.id,
+    sender: 'ambassador',
+    body,
+    created_at: new Date().toISOString()
+  })
+  if (error) { toast('Failed to send', 'error'); return }
+  await loadMessages()
+}
+
+// ========================================================
+// MISC HELPERS
+// ========================================================
+function shareWhatsApp() {
+  const text = encodeURIComponent(`Hey! Join Campus Plug — Nigeria's biggest student marketplace and community 🎓\n\nSign up here: ${state.ambassador.referral_link}\n\nUse my code: ${state.ambassador.referral_code}`)
+  window.open(`https://wa.me/?text=${text}`, '_blank')
+}
+
+// ========================================================
+// INIT
+// ========================================================
+checkAuth()
+</script>
+</body>
+</html>
