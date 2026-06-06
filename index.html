@@ -457,7 +457,7 @@ async function submitOnboarding() {
   const { count } = await db.from('ambassadors').select('*', { count: 'exact', head: true }).ilike('school', school)
   const seq = String((count || 0) + 1).padStart(3, '0')
   const referral_code = `CP-${slug}-${seq}`
-  const referral_link = `campusplug.com/ref/${referral_code}`
+  const referral_link = `https://campus-plug-app.vercel.app/ref/${referral_code}`
 
   const { error } = await db.from('ambassadors').update({
     phone, whatsapp, school, department: dept, level,
@@ -687,7 +687,7 @@ function renderOverview() {
         <div style="font-size:13px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Your Referral Code</div>
         <div class="ref-code">${a.referral_code || '—'}</div>
         <div class="ref-link-box">
-          <span class="ref-link-text">${a.referral_link || 'campusplug.com/ref/...'}</span>
+          <span class="ref-link-text">${a.referral_link || 'https://campus-plug-app.vercel.app/ref/...'}</span>
           <button class="btn btn-primary btn-sm" onclick="copyText('${a.referral_link||''}')">📋 Copy</button>
         </div>
         <div style="margin-top:10px;display:flex;gap:8px">
