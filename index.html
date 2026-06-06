@@ -684,15 +684,38 @@ function renderOverview() {
       </div>
 
       <div class="ref-card">
-        <div style="font-size:13px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Your Referral Code</div>
-        <div class="ref-code">${a.referral_code || '—'}</div>
-        <div class="ref-link-box">
+        <div style="font-size:13px;color:var(--text3);margin-bottom:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Your Referral Codes</div>
+
+        <!-- Auto-generated code -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Auto Code</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="ref-code" style="font-size:18px">${a.referral_code || '—'}</div>
+            <button class="btn btn-ghost btn-sm" onclick="copyText('${a.referral_code||''}')">Copy</button>
+          </div>
+        </div>
+
+        <!-- Custom vanity code -->
+        <div style="margin-bottom:12px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Custom Code ${a.custom_code ? '' : '<span style="color:var(--accent)">(not set)</span>'}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="ref-code" style="font-size:18px;color:var(--green)">${a.custom_code || '—'}</div>
+            ${a.custom_code ? `<button class="btn btn-ghost btn-sm" onclick="copyText('${a.custom_code}')">Copy</button>` : ''}
+            <button class="btn btn-ghost btn-sm" onclick="openCustomCodeModal()">✏️ ${a.custom_code ? 'Change' : 'Set'}</button>
+          </div>
+        </div>
+
+        <!-- Referral Link -->
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Referral Link</div>
+        <div class="ref-link-box" style="margin-bottom:10px">
           <span class="ref-link-text">${a.referral_link || 'https://campus-plug-app.vercel.app/ref/...'}</span>
           <button class="btn btn-primary btn-sm" onclick="copyText('${a.referral_link||''}')">📋 Copy</button>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px">
-          <button class="btn btn-ghost btn-sm" onclick="shareWhatsApp()">📲 Share on WhatsApp</button>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="shareWhatsApp()">📲 WhatsApp</button>
           <button class="btn btn-ghost btn-sm" onclick="copyText('${a.referral_link||''}')">🔗 Copy Link</button>
+          ${a.custom_code ? `<button class="btn btn-ghost btn-sm" onclick="copyText('https://campus-plug-app.vercel.app/ref/${a.custom_code||''}')">🔗 Custom Link</button>` : ''}
         </div>
       </div>
     </div>
@@ -1187,8 +1210,93 @@ async function sendMessage() {
 // ========================================================
 // MISC HELPERS
 // ========================================================
+function openCustomCodeModal() {
+  const a = state.ambassador
+  const el = document.getElementById('modal-root')
+  el.innerHTML = `
+  <div class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal" style="max-width:420px">
+      <div class="modal-header">
+        <span class="modal-title">✏️ Set Custom Referral Code</span>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
+          Set a short, memorable code people can type manually (e.g. <strong>FATIMA</strong> or <strong>CAMPUS-KANO</strong>).<br><br>
+          Both your auto code <strong style="color:var(--brand)">${a.referral_code}</strong> and your custom code will work — students can use either one.
+        </div>
+        <div class="form-group">
+          <label class="form-label">Custom Code</label>
+          <input class="form-input" id="custom-code-input" placeholder="e.g. FATIMA or MYJAMBITE"
+            value="${a.custom_code||''}"
+            maxlength="20"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"
+            style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:1px">
+          <div class="form-hint">Letters, numbers, hyphens only. Max 20 chars. No spaces.</div>
+        </div>
+        <div id="custom-code-preview" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text2)">
+          Link preview: <span id="cc-preview-text" style="color:var(--brand);font-weight:600">https://campus-plug-app.vercel.app/ref/</span>
+        </div>
+      </div>
+      <div id="custom-code-err"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCustomCode()">Save Custom Code</button>
+      </div>
+    </div>
+  </div>`
+
+  // Live preview
+  document.getElementById('custom-code-input').addEventListener('input', function() {
+    const val = this.value
+    document.getElementById('cc-preview-text').textContent =
+      `https://campus-plug-app.vercel.app/ref/${val || '...'}`
+  })
+}
+
+async function saveCustomCode() {
+  const raw = document.getElementById('custom-code-input').value.trim().toUpperCase()
+  const errEl = document.getElementById('custom-code-err')
+  errEl.innerHTML = ''
+
+  if (!raw) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Enter a code first.</div></div>`; return }
+  if (raw.length < 3) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Code must be at least 3 characters.</div></div>`; return }
+
+  // Check if code is already taken by another ambassador
+  const { data: existing } = await db.from('ambassadors')
+    .select('id')
+    .or(`referral_code.eq.${raw},custom_code.eq.${raw}`)
+    .neq('id', state.ambassador.id)
+    .single()
+
+  if (existing) {
+    errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">❌ That code is already taken. Try a different one.</div></div>`
+    return
+  }
+
+  const { error } = await db.from('ambassadors').update({
+    custom_code: raw,
+    updated_at: new Date().toISOString()
+  }).eq('id', state.ambassador.id)
+
+  if (error) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">${error.message}</div></div>`; return }
+
+  toast(`✅ Custom code set: ${raw}`, 'success')
+  state.ambassador.custom_code = raw
+  closeModal()
+  renderOverview()
+}
 function shareWhatsApp() {
-  const text = encodeURIComponent(`Hey! Join Campus Plug — Nigeria's biggest student marketplace and community 🎓\n\nSign up here: ${state.ambassador.referral_link}\n\nUse my code: ${state.ambassador.referral_code}`)
+  const a = state.ambassador
+  const codeLines = a.custom_code
+    ? `🔑 Referral Code: *${a.referral_code}*\n✨ Or use my custom code: *${a.custom_code}*`
+    : `🔑 Referral Code: *${a.referral_code}*`
+  const text = encodeURIComponent(
+    `Hey! Join Campus Plug — Nigeria's biggest student marketplace 🎓\n\n` +
+    `👉 Sign up here: ${a.referral_link}\n\n` +
+    `${codeLines}\n\n` +
+    `Enter the code when signing up so we're linked! ✅`
+  )
   window.open(`https://wa.me/?text=${text}`, '_blank')
 }
 
