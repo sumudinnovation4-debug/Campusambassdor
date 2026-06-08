@@ -1228,17 +1228,17 @@ function openCustomCodeModal() {
       </div>
       <div class="modal-body">
         <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
-          Set a short, memorable code people can type manually (e.g. <strong>FATIMA</strong> or <strong>CAMPUS-KANO</strong>).<br><br>
+          Set a short, memorable 6-character code people can type manually (e.g. <strong>FATIMA</strong> or <strong>KANO06</strong>).<br><br>
           Both your auto code <strong style="color:var(--brand)">${a.referral_code}</strong> and your custom code will work — students can use either one.
         </div>
         <div class="form-group">
           <label class="form-label">Custom Code</label>
-          <input class="form-input" id="custom-code-input" placeholder="e.g. FATIMA or MYJAMBITE"
+          <input class="form-input" id="custom-code-input" placeholder="e.g. FATIMA"
             value="${a.custom_code||''}"
-            maxlength="20"
-            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"
+            maxlength="6"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)"
             style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:1px">
-          <div class="form-hint">Letters, numbers, hyphens only. Max 20 chars. No spaces.</div>
+          <div class="form-hint">Letters and numbers only. Must be exactly 6 characters. No spaces or hyphens.</div>
         </div>
         <div id="custom-code-preview" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text2)">
           Link preview: <span id="cc-preview-text" style="color:var(--brand);font-weight:600">https://campus-plug-app.vercel.app/ref/</span>
@@ -1266,7 +1266,7 @@ async function saveCustomCode() {
   errEl.innerHTML = ''
 
   if (!raw) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Enter a code first.</div></div>`; return }
-  if (raw.length < 3) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Code must be at least 3 characters.</div></div>`; return }
+  if (raw.length !== 6) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Code must be exactly 6 characters.</div></div>`; return }
 
   // Check if code is already taken by another ambassador
   const { data: existing } = await db.from('ambassadors')
