@@ -301,9 +301,7 @@ async function loadAmbassador() {
     return
   }
 
-  if (data.status === 'pending') { renderPendingAccess(); return }
   if (data.status === 'rejected') { renderRejected(data); return }
-  if (data.status !== 'approved') { renderPendingAccess(); return }
 
   state.ambassador = data
 
@@ -598,6 +596,7 @@ function renderApp() {
       </div>
       <div class="topbar-right">
         <span class="topbar-badge">🏅 ${a.school || 'Ambassador'}</span>
+        ${a.status === 'pending' ? '<span class="topbar-badge" style="background:rgba(245,158,11,0.15);color:#FCD34D;border-color:rgba(245,158,11,0.35)">⏳ Pending Approval</span>' : ''}
         <span class="topbar-badge" style="cursor:pointer" onclick="copyText('${a.referral_link||''}')" title="Copy referral link">📎 ${a.referral_code || 'Loading...'}</span>
       </div>
     </div>
@@ -665,7 +664,18 @@ function renderOverview() {
   }).length
   const monthPct = Math.min(100, Math.round(thisMonthRefs / 30 * 100))
 
+  // Pending approval banner
+  const pendingBanner = a.status === 'pending' ? `
+    <div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.35);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;gap:12px;align-items:center">
+      <span style="font-size:22px">⏳</span>
+      <div>
+        <div style="font-weight:700;font-size:14px;color:#FCD34D;margin-bottom:2px">Approval Pending</div>
+        <div style="font-size:13px;color:var(--text2)">Your account is awaiting admin approval. Your referral link is already active — referrals you collect now will be counted and visible here once you're approved.</div>
+      </div>
+    </div>` : ''
+
   pc.innerHTML = `
+    ${pendingBanner}
     ${annHTML}
 
     <div class="stats-grid">
@@ -927,8 +937,8 @@ function renderEarnings() {
           ${(verifiedEarnings - totalPaid) < 5000 
             ? `<div style="font-size:12px;color:var(--accent);padding:10px 14px;background:rgba(245,158,11,0.1);border-radius:8px;margin-bottom:12px">⚠️ Minimum payout is ₦5,000. Earn more first!</div>`
             : ''}
-          <button class="btn btn-primary btn-full" onclick="requestPayout(${verifiedEarnings - totalPaid})" ${(verifiedEarnings - totalPaid) < 5000 ? 'disabled' : ''}>
-            Request Payout
+          <button class="btn btn-primary btn-full" onclick="requestPayout(${verifiedEarnings - totalPaid})" ${(verifiedEarnings - totalPaid) < 5000 || state.ambassador.status !== 'approved' ? 'disabled' : ''}>
+            ${state.ambassador.status !== 'approved' ? '⏳ Payout Available After Approval' : 'Request Payout'}
           </button>
         </div>
       </div>
@@ -1228,17 +1238,17 @@ function openCustomCodeModal() {
       </div>
       <div class="modal-body">
         <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.6">
-          Set a short, memorable 6-character code people can type manually (e.g. <strong>FATIMA</strong> or <strong>KANO06</strong>).<br><br>
+          Set a short, memorable code people can type manually (e.g. <strong>FATIMA</strong> or <strong>CAMPUS-KANO</strong>).<br><br>
           Both your auto code <strong style="color:var(--brand)">${a.referral_code}</strong> and your custom code will work — students can use either one.
         </div>
         <div class="form-group">
           <label class="form-label">Custom Code</label>
-          <input class="form-input" id="custom-code-input" placeholder="e.g. FATIMA"
+          <input class="form-input" id="custom-code-input" placeholder="e.g. FATIMA or MYJAMBITE"
             value="${a.custom_code||''}"
-            maxlength="6"
-            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)"
+            maxlength="20"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9-]/g,'')"
             style="font-family:monospace;font-size:16px;font-weight:700;letter-spacing:1px">
-          <div class="form-hint">Letters and numbers only. Must be exactly 6 characters. No spaces or hyphens.</div>
+          <div class="form-hint">Letters, numbers, hyphens only. Max 20 chars. No spaces.</div>
         </div>
         <div id="custom-code-preview" style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:13px;color:var(--text2)">
           Link preview: <span id="cc-preview-text" style="color:var(--brand);font-weight:600">https://campus-plug-app.vercel.app/ref/</span>
@@ -1266,7 +1276,7 @@ async function saveCustomCode() {
   errEl.innerHTML = ''
 
   if (!raw) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Enter a code first.</div></div>`; return }
-  if (raw.length !== 6) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Code must be exactly 6 characters.</div></div>`; return }
+  if (raw.length < 3) { errEl.innerHTML = `<div style="padding:0 24px 12px"><div class="auth-err">Code must be at least 3 characters.</div></div>`; return }
 
   // Check if code is already taken by another ambassador
   const { data: existing } = await db.from('ambassadors')
